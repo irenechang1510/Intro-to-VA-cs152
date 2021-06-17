@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+    <style>
+    .axis {
+      font: 10px sans-serif;
+    }
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+    .container {
+      padding: 20px; 
+      display: grid;
+      grid-gap: 10px;
+      grid-template-columns: 25%;
+    }
+    .dataset-container {
+        grid-column: 1 / 1;
+    }
+    .models-container {
+        grid-column: 2 / 2;
+    }
+    .models-container ul {
+        display: grid;
+        grid-gap: 10px;
+        grid-template-columns: 25% 25% 25% 25%;
+        list-style-type: none;        
+    }
+    .model-confusion-matrix {
+        padding: 20px;
+    }
+    .model-li {
+        padding: 10px;
+        border-radius: 5px;
+        border-color: #c6d6e6;
+        border-style: solid;
+        border-width: 2px;
+    }
+    .confusion-matrix-table td {
+        text-align: center;
+        /*border: 2px solid gray;*/
+    }
+
+    .confusion-matrix-table td.innerMatrix {
+        font-weight: 700;
+    }
+
+    div.tooltip {   
+        position: absolute;         
+        text-align: left;
+        width: 120px;                    
+        height: 88px;                   
+        padding: 2px;            
+        padding-left: 15px;         
+        font: 12px sans-serif;      
+        background: lightsteelblue; 
+        border: 0px;        
+        border-radius: 8px;         
+        pointer-events: none;         
+    }
+
+    path {
+        pointer-events: all;
+    }
+
+    </style>
+</head>
+
+<body>
+    <div class='container'>
+        <div class='dataset-container'>
+            <div class='svg-container' id='dataset-svg'>
+            </div>
+            <div class='data-control-container'>
+                <p>
+                    X-axis: 
+                    <select name="x-axis" id="x-axis-select">
+                    </select>
+                </p>
+                <p>
+                    Y-axis:
+                    <select name="y-axis" id="y-axis-select">
+                    </select>
+                </p>
+            </div>
+            <div class='data-control-container' id='projection-select'>
+            </div>
+            <div class='dataset-description-container'>
+                <p>The City of Somerville sends out <a href='https://data.somervillema.gov/Happiness/Somerville-Happiness-Survey-responses-2011-2013-20/w898-3dfm'>a happiness survey</a> to a random sample of Somerville residents asking them to rate their personal happiness and their satisfaction with City services. This combined dataset includes the survey responses from 2011, 2013, and 2015.</p>
+
+                <p> The dataset for this lab is a <a href='https://archive.ics.uci.edu/ml/datasets/Somerville+Happiness+Survey'>subset of the happiness survey</a> with six features, "the availability of info about city services," "cost of housing," "quality of public schools," "trust in local police," "maintenance of streets and sidewalks", and "availability of social and community events".  Each feature is rated from 1 to 5, and each data point is labeled with 1 (happy) or 0 (unhappy). 
+            </div>
+        </div>
+        <div class='models-container'>
+            <ul>
+            </ul>
+        </div>
+    </div>
+
+
+    <script src="./d3.min.js"></script>
+    <script>
+        /* BEGIN LOADING DATA */
+        /* Loading the data into variables.  Usually, this would be pulled from an external source, or uploaded,
+        like in the previous lab.  But for portability, we just embed it right in the script tag */
+
+        var happinessData = JSON.parse('{"132":{"city_services":3,"housing_cost":4,"schools":4,"trust_police":5,"streets_sidewalks":1,"events":3},"53":{"city_services":5,"housing_cost":1,"schools":3,"trust_police":3,"streets_sidewalks":4,"events":4},"110":{"city_services":5,"housing_cost":2,"schools":2,"trust_police":4,"streets_sidewalks":5,"events":5},"89":{"city_services":4,"housing_cost":2,"schools":4,"trust_police":4,"streets_sidewalks":4,"events":4},"33":{"city_services":4,"housing_cost":1,"schools":3,"trust_police":4,"streets_sidewalks":4,"events":5},"68":{"city_services":4,"housing_cost":1,"schools":3,"trust_police":4,"streets_sidewalks":4,"events":4},"4":{"city_services":5,"housing_cost":4,"schools":3,"trust_police":3,"streets_sidewalks":3,"events":5},"131":{"city_services":5,"housing_cost":3,"schools":5,"trust_police":4,"streets_sidewalks":5,"events":5},"81":{"city_services":5,"housing_cost":2,"schools":5,"trust_police":5,"streets_sidewalks":5,"events":5},"26":{"city_services":3,"housing_cost":4,"schools":3,"trust_police":3,"streets_sidewalks":2,"events":3},"77":{"city_services":4,"housing_cost":5,"schools":5,"trust_police":5,"streets_sidewalks":1,"events":3},"123":{"city_services":5,"housing_cost":3,"schools":4,"trust_police":4,"streets_sidewalks":4,"events":4},"2":{"city_services":5,"housing_cost":3,"schools":3,"trust_police":3,"streets_sidewalks":3,"events":5},"103":{"city_services":5,"housing_cost":4,"schools":4,"trust_police":4,"streets_sidewalks":4,"events":5},"113":{"city_services":5,"housing_cost":3,"schools":4,"trust_police":3,"streets_sidewalks":4,"events":3},"92":{"city_services":5,"housing_cost":2,"schools":3,"trust_police":4,"streets_sidewalks":4,"events":5},"10":{"city_services":3,"housing_cost":2,"schools":3,"trust_police":3,"streets_sidewalks":2,"events":3},"27":{"city_services":3,"housing_cost":3,"schools":3,"trust_police":5,"streets_sidewalks":5,"events":5},"13":{"city_services":4,"housing_cost":2,"schools":4,"trust_police":5,"streets_sidewalks":4,"events":3},"121":{"city_services":4,"housing_cost":2,"schools":4,"trust_police":4,"streets_sidewalks":4,"events":4},"116":{"city_services":3,"housing_cost":2,"schools":2,"trust_police":3,"streets_sidewalks":3,"events":3},"130":{"city_services":5,"housing_cost":2,"schools":2,"trust_police":4,"streets_sidewalks":4,"events":5},"85":{"city_services":5,"housing_cost":3,"schools":3,"trust_police":3,"streets_sidewalks":2,"events":5},"44":{"city_services":4,"housing_cost":2,"schools":4,"trust_police":3,"streets_sidewalks":2,"events":4},"80":{"city_services":5,"housing_cost":3,"schools":3,"trust_police":4,"streets_sidewalks":3,"events":3},"114":{"city_services":5,"housing_cost":2,"schools":3,"trust_police":3,"streets_sidewalks":3,"events":5},"102":{"city_services":5,"housing_cost":4,"schools":4,"trust_police":3,"streets_sidewalks":3,"events":4},"23":{"city_services":4,"housing_cost":3,"schools":5,"trust_police":5,"streets_sidewalks":5,"events":4},"84":{"city_services":5,"housing_cost":2,"schools":3,"trust_police":5,"streets_sidewalks":5,"events":5},"133":{"city_services":5,"housing_cost":1,"schools":5,"trust_police":5,"streets_sidewalks":5,"events":5},"60":{"city_services":4,"housing_cost":4,"schools":4,"trust_police":4,"streets_sidewalks":3,"events":4},"63":{"city_services":4,"housing_cost":4,"schools":3,"trust_police":3,"streets_sidewalks":2,"events":5},"30":{"city_services":5,"housing_cost":3,"schools":3,"trust_police":3,"streets_sidewalks":5,"events":3},"7":{"city_services":5,"housing_cost":4,"schools":4,"trust_police":4,"streets_sidewalks":4,"events":5},"1":{"city_services":3,"housing_cost":2,"schools":3,"trust_police":5,"streets_sidewalks":4,"events":3},"142":{"city_services":5,"housing_cost":3,"schools":2,"trust_police":5,"streets_sidewalks":5,"events":5}}')
+
+        var predictionData = JSON.parse('{"ground_truth":{"132":1,"53":1,"110":1,"89":1,"33":0,"68":1,"4":0,"131":0,"81":1,"26":0,"77":0,"123":1,"2":1,"103":1,"113":1,"92":1,"10":0,"27":1,"13":0,"121":0,"116":0,"130":0,"85":0,"44":1,"80":0,"114":0,"102":1,"23":0,"84":1,"133":1,"60":0,"63":1,"30":1,"7":1,"1":0,"142":0},"Nearest Neighbors":{"132":0,"53":1,"110":1,"89":0,"33":0,"68":0,"4":0,"131":1,"81":1,"26":0,"77":0,"123":1,"2":0,"103":1,"113":0,"92":1,"10":0,"27":0,"13":0,"121":0,"116":1,"130":1,"85":1,"44":0,"80":0,"114":0,"102":1,"23":0,"84":1,"133":1,"60":1,"63":0,"30":0,"7":1,"1":0,"142":1},"Linear SVM":{"132":0,"53":1,"110":1,"89":1,"33":1,"68":1,"4":1,"131":1,"81":1,"26":0,"77":0,"123":1,"2":1,"103":1,"113":1,"92":1,"10":0,"27":1,"13":1,"121":1,"116":0,"130":1,"85":1,"44":1,"80":1,"114":1,"102":1,"23":1,"84":1,"133":1,"60":1,"63":1,"30":1,"7":1,"1":0,"142":1},"RBF SVM":{"132":0,"53":1,"110":1,"89":0,"33":1,"68":1,"4":0,"131":1,"81":1,"26":0,"77":0,"123":1,"2":0,"103":1,"113":0,"92":1,"10":0,"27":0,"13":0,"121":0,"116":0,"130":1,"85":0,"44":1,"80":1,"114":0,"102":0,"23":0,"84":1,"133":1,"60":1,"63":0,"30":0,"7":1,"1":0,"142":1},"Gaussian Process":{"132":0,"53":1,"110":1,"89":1,"33":1,"68":1,"4":1,"131":1,"81":1,"26":0,"77":0,"123":1,"2":1,"103":1,"113":1,"92":1,"10":0,"27":1,"13":1,"121":1,"116":0,"130":1,"85":1,"44":0,"80":1,"114":1,"102":1,"23":1,"84":1,"133":1,"60":1,"63":0,"30":1,"7":1,"1":0,"142":1},"Decision Tree":{"132":0,"53":1,"110":1,"89":0,"33":0,"68":0,"4":0,"131":1,"81":1,"26":0,"77":0,"123":1,"2":0,"103":1,"113":1,"92":1,"10":1,"27":0,"13":1,"121":0,"116":1,"130":1,"85":0,"44":0,"80":0,"114":0,"102":1,"23":0,"84":1,"133":1,"60":0,"63":0,"30":1,"7":1,"1":1,"142":1},"Random Forest":{"132":0,"53":1,"110":1,"89":1,"33":1,"68":1,"4":1,"131":1,"81":1,"26":0,"77":0,"123":1,"2":0,"103":1,"113":1,"92":1,"10":0,"27":0,"13":1,"121":1,"116":0,"130":1,"85":1,"44":1,"80":1,"114":1,"102":1,"23":0,"84":1,"133":1,"60":0,"63":0,"30":0,"7":1,"1":0,"142":1},"Neural Net":{"132":0,"53":1,"110":1,"89":1,"33":1,"68":0,"4":0,"131":1,"81":1,"26":0,"77":0,"123":1,"2":1,"103":1,"113":1,"92":1,"10":0,"27":0,"13":0,"121":1,"116":0,"130":1,"85":0,"44":1,"80":1,"114":1,"102":1,"23":1,"84":1,"133":1,"60":0,"63":0,"30":0,"7":1,"1":0,"142":1},"AdaBoost":{"132":0,"53":1,"110":1,"89":1,"33":0,"68":0,"4":0,"131":1,"81":1,"26":0,"77":1,"123":1,"2":1,"103":0,"113":0,"92":1,"10":0,"27":0,"13":0,"121":1,"116":0,"130":1,"85":1,"44":1,"80":0,"114":1,"102":1,"23":1,"84":1,"133":1,"60":0,"63":0,"30":0,"7":0,"1":0,"142":1},"Naive Bayes":{"132":0,"53":1,"110":1,"89":1,"33":1,"68":1,"4":1,"131":1,"81":1,"26":0,"77":0,"123":1,"2":1,"103":1,"113":1,"92":1,"10":0,"27":0,"13":1,"121":1,"116":0,"130":1,"85":1,"44":0,"80":0,"114":1,"102":1,"23":1,"84":1,"133":1,"60":1,"63":0,"30":1,"7":1,"1":0,"142":1},"QDA":{"132":0,"53":1,"110":0,"89":1,"33":1,"68":0,"4":0,"131":1,"81":1,"26":0,"77":0,"123":1,"2":0,"103":1,"113":1,"92":1,"10":0,"27":1,"13":0,"121":1,"116":0,"130":0,"85":0,"44":1,"80":1,"114":1,"102":1,"23":1,"84":1,"133":1,"60":0,"63":0,"30":1,"7":1,"1":0,"142":1}}')
+
+        var pcaData = JSON.parse('{"132": {"x": "3.123241220702234", "y": "-0.7870050418349697"}, "53": {"x": "-1.0026063282159785", "y": "1.5043811805983958"}, "110": {"x": "-1.8575780054832038", "y": "0.9497895813015933"}, "89": {"x": "-0.4559368696143155", "y": "-0.005174680434031844"}, "33": {"x": "-1.2800099879002835", "y": "1.136188185649919"}, "68": {"x": "-0.9540532129075661", "y": "1.2228767938679452"}, "4": {"x": "0.8219010540673645", "y": "-0.061447926512038044"}, "131": {"x": "-1.2908644818356694", "y": "-1.6342485805218487"}, "81": {"x": "-1.9542054022375184", "y": "-1.508994761547545"}, "26": {"x": "2.7289780671688395", "y": "0.5695630323283188"}, "77": {"x": "3.373281281401333", "y": "-2.1583564409734364"}, "123": {"x": "-0.24019539909235976", "y": "-0.6985327358117656"}, "2": {"x": "0.35808330095125557", "y": "0.488610204029206"}, "103": {"x": "-0.1023344209689683", "y": "-1.3352794745710357"}, "113": {"x": "0.2852845431860981", "y": "-0.1870398160267989"}, "92": {"x": "-1.0642685173783277", "y": "0.44283013027218515"}, "10": {"x": "1.801342560936622", "y": "1.669679293410807"}, "27": {"x": "-1.062832264287387", "y": "-0.4164663548943445"}, "13": {"x": "-0.32950326190733825", "y": "-0.3432903837829459"}, "121": {"x": "-0.45593686961431557", "y": "-0.005174680434031763"}, "116": {"x": "1.0080330728317461", "y": "2.176638744440215"}, "130": {"x": "-1.0985671075554697", "y": "1.1208234740329177"}, "85": {"x": "1.117094198878989", "y": "0.6596440967605307"}, "44": {"x": "1.2616080935268927", "y": "0.7616974165955581"}, "80": {"x": "0.81047368365095", "y": "0.23718310889831798"}, "114": {"x": "-0.10573445216485322", "y": "1.0386683345704504"}, "102": {"x": "1.1821564192372234", "y": "-0.6527526620547445"}, "23": {"x": "-0.9163545915345392", "y": "-1.8290643590342732"}, "84": {"x": "-2.022802582591802", "y": "-0.15300807402607994"}, "133": {"x": "-2.418023155353628", "y": "-0.9589366310063013"}, "60": {"x": "1.2307095345456365", "y": "-0.9342570487851951"}, "63": {"x": "1.8289882345892516", "y": "0.25288589105577647"}, "30": {"x": "-0.5080249449187781", "y": "0.31991963500260895"}, "7": {"x": "-0.10233442096896832", "y": "-1.3352794745710357"}, "1": {"x": "-0.11572556949032681", "y": "0.47800288481427655"}, "142": {"x": "-1.593283419652835", "y": "-0.025072860806591452"}}')
+
+        var mdsData = JSON.parse('{"132": {"x": "-3.4002743366342663", "y": "1.7789486485063284"}, "53": {"x": "1.7441626839862077", "y": "1.2042883243306954"}, "110": {"x": "2.4254050732787893", "y": "-0.13622359768477685"}, "89": {"x": "0.5878307488093509", "y": "0.09559798881640101"}, "33": {"x": "1.9509394033593033", "y": "0.6688411439541412"}, "68": {"x": "1.53230143157918", "y": "0.9824161838826225"}, "4": {"x": "-1.7472239188319476", "y": "-0.8525641901199579"}, "131": {"x": "0.07115036223687467", "y": "-2.412109879475455"}, "81": {"x": "1.2761077853423", "y": "-2.451484781261428"}, "26": {"x": "-2.1480299529362332", "y": "2.1741298946799446"}, "77": {"x": "-4.3074758315856485", "y": "0.053388461603674935"}, "123": {"x": "-0.06692072264662927", "y": "-0.7155636805290033"}, "2": {"x": "-0.8569185857264484", "y": "0.15606712667119027"}, "103": {"x": "-0.8807357368405143", "y": "-1.6269688644870544"}, "113": {"x": "-0.6687923794807007", "y": "-0.6282485436252991"}, "92": {"x": "1.136288363999201", "y": "-0.25307461664664865"}, "10": {"x": "-0.7240200565543998", "y": "2.76665390268585"}, "27": {"x": "1.7723597933843749", "y": "-1.5322401925981708"}, "13": {"x": "0.9097229996465255", "y": "1.2958251268531669"}, "121": {"x": "0.5878307488093508", "y": "0.09559798881640101"}, "116": {"x": "0.16878629596329728", "y": "2.804990891293634"}, "130": {"x": "1.799479262908835", "y": "0.11532822344604184"}, "85": {"x": "-1.6403789693281925", "y": "0.7306076846092636"}, "44": {"x": "-0.8900501287355786", "y": "1.7767210473855974"}, "80": {"x": "-0.6726757433462596", "y": "0.900881389475643"}, "114": {"x": "0.00938300859746261", "y": "0.8098554911514544"}, "102": {"x": "-1.7674734224126925", "y": "-0.5936824843714397"}, "23": {"x": "0.47039970843955903", "y": "-2.440818149876936"}, "84": {"x": "2.0132266334610684", "y": "-0.8979972685335293"}, "133": {"x": "2.2170055168373364", "y": "-2.348596000626195"}, "60": {"x": "-1.573099452492974", "y": "-0.23619282756532667"}, "63": {"x": "-2.355382269874746", "y": "0.43006259359800153"}, "30": {"x": "0.14182492320373422", "y": "-1.367726731758706"}, "7": {"x": "-0.8807357368405141", "y": "-1.6269688644870541"}, "1": {"x": "1.2638812204675889", "y": "2.093335682102331"}, "142": {"x": "2.502101279957412", "y": "-0.8130771202154019"}}')
+
+        var tsneData = JSON.parse('{"132": {"x": "167.34514", "y": "-78.80256"}, "53": {"x": "-66.31012", "y": "78.91679"}, "110": {"x": "-143.50905", "y": "97.8286"}, "89": {"x": "-23.263535", "y": "70.2958"}, "33": {"x": "-73.7837", "y": "114.27223"}, "68": {"x": "-48.079346", "y": "104.17205"}, "4": {"x": "54.47771", "y": "-73.80589"}, "131": {"x": "-42.22645", "y": "-18.67803"}, "81": {"x": "-73.3185", "y": "-8.914412"}, "26": {"x": "160.1787", "y": "-39.448757"}, "77": {"x": "157.34373", "y": "-99.439384"}, "123": {"x": "19.988287", "y": "16.689676"}, "2": {"x": "34.845974", "y": "-93.72709"}, "103": {"x": "2.8373532", "y": "-40.23066"}, "113": {"x": "48.687035", "y": "38.1681"}, "92": {"x": "-105.02911", "y": "86.09203"}, "10": {"x": "154.49329", "y": "-5.192716"}, "27": {"x": "-159.72777", "y": "35.634163"}, "13": {"x": "5.2573347", "y": "91.145485"}, "121": {"x": "-7.3387847", "y": "56.45433"}, "116": {"x": "166.92894", "y": "15.241019"}, "130": {"x": "-119.35084", "y": "109.06075"}, "85": {"x": "58.906925", "y": "-109.22867"}, "44": {"x": "125.978645", "y": "-12.682737"}, "80": {"x": "67.02233", "y": "13.523365"}, "114": {"x": "14.587497", "y": "-111.48706"}, "102": {"x": "52.039875", "y": "-40.52353"}, "23": {"x": "-46.57475", "y": "14.851404"}, "84": {"x": "-133.91516", "y": "64.64145"}, "133": {"x": "-97.60443", "y": "-7.017573"}, "60": {"x": "77.208496", "y": "-31.8391"}, "63": {"x": "85.114204", "y": "-87.68342"}, "30": {"x": "60.44542", "y": "60.95598"}, "7": {"x": "14.047816", "y": "-21.266489"}, "1": {"x": "4.013592", "y": "118.13597"}, "142": {"x": "-162.34053", "y": "73.82902"}}')
+    /* END LOADING DATA */
+
+        // Defining size variables for the SVGs
+        var margin = {top: 20, right: 20, bottom: 30, left: 40},
+            width = 460 - margin.left - margin.right,
+            height = 300 - margin.top - margin.bottom,
+            miniWidth = 230 - margin.left - margin.right,
+            miniHeight = 150 - margin.top - margin.bottom;
+
+        // Choose the initial dimensions that we are rendering
+        var possibleDimensions = Object.keys(happinessData[Object.keys(happinessData)[0]])
+        var xDim = possibleDimensions[0];
+        var yDim = possibleDimensions[1];
+
+        // Store possible choices for projections
+        var projectionOptions = ['axis_aligned', 'pca', 'mds', 'tsne']
+        var currProjectionOption = 'axis_aligned'
+
+        // Initialize the scales and axes
+        var xScale = d3.scale.linear().range([0, width]),
+            xAxis = d3.svg.axis().scale(xScale).orient("bottom").ticks(5),
+            miniXScale = d3.scale.linear().range([0, miniWidth]),
+            miniXAxis = d3.svg.axis().scale(miniXScale).orient("bottom").ticks(5);
+
+        // setup y
+        var yScale = d3.scale.linear().range([height, 0]),
+            yAxis = d3.svg.axis().scale(yScale).orient("right").ticks(5),
+            miniYScale = d3.scale.linear().range([miniHeight, 0]),
+            miniYAxis = d3.svg.axis().scale(miniYScale).orient("right").ticks(5);
+
+        initializeProjections()
+        initializeDimensions()
+        var modelContainers = initializeModels();
+        redrawScatterplots(modelContainers);
+        drawConfusionMatrices(modelContainers);
+
+        /* SCATTERPLOT CODE - YOU WILL NEED TO CHANGE THIS TO ADD TOOLTIPS */
+        function buildScatterPlot(containerElement, data, modelPredictions, groundTruth, fullData) {
+            var svgWidth, svgHeight, scatterXScale, scatterXAxis, scatterYScale, scatterYAxis;
+            if (modelPredictions.length === 0) {
+                // scatter plot is for the whole dataset
+                svgWidth = width;
+                svgHeight = height;
+                scatterXScale = xScale;
+                scatterXAxis = xAxis;
+                scatterYScale = yScale;
+                scatterYAxis = yAxis;
+            } else {
+                // scatter plot is for a particular model
+                svgWidth = miniWidth;
+                svgHeight = miniHeight;
+                scatterXScale = miniXScale;
+                scatterXAxis = miniXAxis;
+                scatterYScale = miniYScale;
+                scatterYAxis = miniYAxis;
+            }
+
+            // HINT: If you need to have a div floating around, like, say, 
+            // for a tooltip, you can append it to this container:
+            var scatterContainer = d3.select(containerElement);
+                
+
+            // We destroy any existing SVGs since we're going to rebuild it.
+            scatterContainer.select('svg').remove()
+
+            // Add the svg
+            svg = d3.select(containerElement)
+                .append('svg');
+
+            var tooltip = d3.select(containerElement).append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0)
+
+            svg.attr("width", svgWidth + margin.left + margin.right)
+                .attr("height", svgHeight + margin.top + margin.bottom)
+                .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+                ;
+
+            // Add the axes
+            var xAxisContainer = svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate(0," + svgHeight + ")")
+                .call(scatterXAxis)
+                    .append("text")
+                    .attr("class", "label")
+                    .attr("x", svgWidth)
+                    .attr("y", -6)
+                    .style("text-anchor", "end");
+
+            // y-axis
+            var yAxisContainer = svg.append("g")
+                .attr("class", "y axis")
+                .call(scatterYAxis)
+                    .append("text")
+                    .attr("class", "label")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 18)
+                    .attr("dy", ".71em")
+                    .style("text-anchor", "end");
+            if (currProjectionOption === 'axis_aligned') {
+                xAxisContainer.text(xDim)
+                yAxisContainer.text(yDim)
+            }
+
+	    
+            // draw dots into the scatterplot
+            var symbol = d3.svg.symbol().size(40).type(function(d)
+            {
+                if (groundTruth[d.id]){
+                    return "cross";
+                }
+                else {
+                    return "circle";
+                }
+
+            })
+
+            // draw dots into the scatterplot
+            svg.selectAll(".dot")
+                .data(data)
+                .enter()
+                    .append("path")
+                    .attr("d", symbol)
+                    .attr("class", "dot")
+                    .attr("r", 2.5)
+                    .attr("fill", 'none')
+                    .attr('stroke', function(d){
+                        if (modelPredictions.length == 0) {
+                            return "black";
+                        }
+                        if (modelPredictions[d.id] == groundTruth[d.id]) {
+                            return "green";
+                        }
+                        else {
+                            return "red";
+                        }
+                        })
+                    .attr("transform",function(d){return("translate(" + scatterXScale(d.x) +", "+ scatterYScale(d.y) + ")");})
+
+                    .on('mouseenter', function (d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                        console.log("happinessData id", d.id);     ;
+                        tooltip.html(
+                            "city_services: " + fullData[d.id].city_services +
+                            "<br>events: " + fullData[d.id].events +
+                            "<br>housing_cost: " + fullData[d.id].housing_cost + 
+                            "<br>schools: " + fullData[d.id].schools + 
+                            "<br>streets_sidewalks: " + fullData[d.id].streets_sidewalks +
+                            "<br>trust_police: " + fullData[d.id].trust_police
+                            )
+                        .style("left", (d3.event.pageX + 5) + "px")
+                        .style("top", (d3.event.pageY - 28) + "px");
+                        })
+
+   
+                    .on('mouseout', function (d) {
+                        tooltip.transition() 
+                            .duration(500)
+                            .style("opacity", 0);
+                        })
+
+        }
+        /* END SCATTERPLOT CODE */
+
+        /* BEGIN CONFUSION MATRIX CODE */
+        function buildConfusionMatrix(containerElement, groundTruth, modelPredictions) {
+            // Code below makes the confusion matrix
+            var table = d3.select(containerElement).append('table')
+                            .attr('class', 'confusion-matrix-table')
+
+            // Creating the other cells of the table
+            table.append('tr').html('<td/><td/><td>ground</td><td>truth</td>')
+            table.append('tr').html('<td/><td/><td>T</td><td>N</td>')
+            predictedTrueRow = table.append('tr').html('<td>Predicted</td><td>T</td>')
+            predictedFalseRow = table.append('tr').html('<td></td><td>N</td>')
+
+            var truePositives = 0;
+            var trueNegatives = 0;
+            var falsePositives = 0;
+            var falseNegatives = 0;
+            Object.keys(groundTruth).forEach(function(k){
+                if (groundTruth[k])
+                    if (groundTruth[k] == modelPredictions[k])
+                        truePositives++;
+                    else 
+                        falseNegatives++;
+                else if (!groundTruth[k])
+                    if (groundTruth[k] == modelPredictions[k])
+                        trueNegatives++;
+                    else 
+                        falsePositives++;
+            })
+
+            predictedTrueRow.append('td')
+                            .attr('class', 'innerMatrix')
+                            .text(truePositives)
+
+            predictedTrueRow.append('td')
+                            .attr('class', 'innerMatrix')
+                            .text(falsePositives)
+
+            predictedFalseRow.append('td')
+                            .attr('class', 'innerMatrix')
+                            .text(falseNegatives)
+
+            predictedFalseRow.append('td')
+                            .attr('class', 'innerMatrix')
+                            .text(trueNegatives)
+        }
+        /* END CONFUSION MATRIX CODE */
+
+        /* BEGIN SUPPORT CODE */
+        function initializeProjections() {
+            var optionSlots = d3.select('#projection-select')
+                .selectAll('div.proj')
+                .data(projectionOptions)
+                .enter()
+                .append('div')
+
+            optionSlots
+                    .append('input')
+                    .attr('type', 'radio')
+                    .attr('name', 'projection')
+                    .attr('value', (d) => d)
+                    .property("checked", function(d){ return d === currProjectionOption; })
+
+            optionSlots
+                    .append('label')
+                    .attr('for', (d) => d)
+                    .text((d) => d)
+
+            d3.selectAll("input[name='projection']")
+                .on("change", function(d) {
+                    index = this.value;
+                    currProjectionOption = index;
+                    redrawScatterplots(modelContainers);
+                })
+
+        }
+
+        function initializeDimensions() {
+            // Fill in the possible dimensions into the select lists
+            d3.select('#x-axis-select')
+                .selectAll('option')
+                .data(possibleDimensions)
+                .enter()
+                    .append('option')
+                    .text((d) => d)
+                    .attr('value', (d,i) => i)
+                    .property("selected", function(d){ return d === xDim; })
+
+            d3.select('#y-axis-select')
+                .selectAll('option')
+                .data(possibleDimensions)
+                .enter()
+                    .append('option')
+                    .text((d) => d)
+                    .attr('value', (d,i) => i)
+                    .property("selected", function(d){ return d === yDim; })
+
+            d3.select("#x-axis-select")
+            .on("change", function(d) {
+                index = this.value;
+                xDim = possibleDimensions[index];
+                redrawScatterplots(modelContainers);
+            })
+
+            d3.select("#y-axis-select")
+            .on("change", function(d) {
+                index = this.value;
+                yDim = possibleDimensions[index];
+                redrawScatterplots(modelContainers);
+            })
+
+        }
+
+        function calculateScales(scatterplotData) {
+            if (currProjectionOption === 'axis_aligned') {
+                xScale.domain([-0.5, 5.5])
+                yScale.domain([-0.5, 5.5])
+                miniXScale.domain([-0.5, 5.5])
+                miniYScale.domain([-0.5, 5.5])                
+            } else {
+                xScale.domain(d3.extent(scatterplotData, (d) => d['x']))
+                yScale.domain(d3.extent(scatterplotData, (d) => d['y']))
+                miniXScale.domain(d3.extent(scatterplotData, (d) => d['x']))
+                miniYScale.domain(d3.extent(scatterplotData, (d) => d['y']))                
+
+                xScale.nice()
+                yScale.nice()
+                miniXScale.nice()
+                miniYScale.nice()                
+            }
+        }
+
+        function initializeModels() {
+            // console.log("initializing models, there should be data ", Object.keys(predictionData))
+            d3.select('.models-container ul')
+                .selectAll('li')
+                .data(Object.keys(predictionData).filter((k) => k !== 'ground_truth')).enter()
+                    .append('li')
+                    .attr('class', 'model-li')
+                    .attr('id', (d) => d.replace(/ /g,"-"))
+                    .html((d) => '<h2>' + d + '</h2>')
+                        .append('div')
+                        .attr('class', 'model-confusion-matrix')
+                        .attr('id', (d) => 'model-confusion-matrix-' + d.replace(/ /g,"-"))
+
+            return Object.keys(predictionData)
+        }
+
+        function parseData(data) {
+            // We need to add some random jitter because there are so few points
+            epsilon = 0.4
+
+            // Different accessor functions based on if it's axis-aligned or not
+            var projAccessor = function (k) {
+                var projData;
+                if (currProjectionOption === 'pca') {
+                    projData = pcaData;
+                } else if (currProjectionOption === 'mds') {
+                    projData = mdsData;
+                } else if (currProjectionOption === 'tsne') {
+                    projData = tsneData;
+                }
+                return {id: parseInt(k), x: parseFloat(projData[k]['x']), y: parseFloat(projData[k]['y'])}
+            }
+
+            var axisAlignedAccessor = function(k) { return {id: parseInt(k), x: data[k][xDim] + ((0.5 - Math.random()) * epsilon), y: data[k][yDim] + ((0.5 - Math.random()) * epsilon)} }
+
+            var scatterplotData;
+            if (currProjectionOption === 'axis_aligned') {
+                scatterplotData = Object.keys(data).map(axisAlignedAccessor)            
+            } else {                
+                scatterplotData = Object.keys(data).map(projAccessor)            
+            }
+            return scatterplotData;
+        }
+
+        function redrawScatterplots(modelContainers) {
+            scatterplotData = parseData(happinessData)
+            calculateScales(scatterplotData);
+            // Render the data svg
+            buildScatterPlot('#dataset-svg', scatterplotData, [], predictionData['ground_truth'], happinessData)
+
+            modelContainers.forEach((c) => { buildScatterPlot('#' + c.replace(/ /g,"-"), scatterplotData, predictionData[c], predictionData['ground_truth'], happinessData) } );
+        }
+
+        function drawConfusionMatrices(modelContainers) {
+            modelContainers.forEach((c) => { buildConfusionMatrix('#model-confusion-matrix-' + c.replace(/ /g,"-"), predictionData['ground_truth'], predictionData[c] ) });
+        }
+    </script>
+</body>
+</html>
